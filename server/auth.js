@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 const scrypt = promisify(crypto.scrypt);
 const KEY_LEN = 64;
 export const TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
-export const MIN_PASSWORD_LENGTH = 8;
+export const MIN_PASSWORD_LENGTH = 4;
 
 export async function createAdminRecord(password) {
   if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
