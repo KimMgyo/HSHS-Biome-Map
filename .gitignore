@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+.vite/
+*.blend1
+.env
+# Admin password hash, plant records and uploaded photos live here; back this folder up.
+data/

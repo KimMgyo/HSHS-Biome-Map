@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "originLat": 37.50368137,
+  "originLon": 126.9649049,
+  "metersPerUnit": 0.538,
+  "rotationDeg": 0,
+  "groundHeight": 3.66,
+  "note": "Blender 원점(0,0)의 위도/경도, Blender 1단위당 실제 미터, 모델 북쪽(+Y)이 진북에서 시계 방향으로 돈 각도. 2026-10-18 최신 위성사진의 운동장·본관·체육관 모서리 6곳으로 맞춘 값(잔차 RMS 0.41 m). 근거는 docs/site-research.md. 현장 GPS로 다시 맞추려면 ?calibrate 화면을 쓰세요."
+}
