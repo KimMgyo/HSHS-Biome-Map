@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#14532d" />
+    <meta name="description" content="흑석고등학교 3D 디지털 트윈 생태 지도" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2316a34a' d='M5 21c0-9 6-15 15-16-1 9-7 15-15 16zm2-3c3-1 7-4 9-9-4 2-7 5-9 9z'/%3E%3C/svg%3E" />
+    <title>흑석고 생태 지도</title>
+  </head>
+  <body>
+    <canvas id="scene" aria-label="흑석고등학교 3D 지도"></canvas>
+
+    <header class="topbar">
+      <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 21c0-9 6-15 15-16-1 9-7 15-15 16zm2-3c3-1 7-4 9-9-4 2-7 5-9 9z" />
+      </svg>
+      <div>
+        <h1>흑석고 생태 지도</h1>
+        <p>학교 디지털 트윈</p>
+      </div>
+    </header>
+    <div class="badges">
+      <p id="admin-badge" class="badge admin" hidden>
+        <span>관리자 모드</span>
+        <button type="button" class="link" data-act="logout">로그아웃</button>
+      </p>
+      <p id="calibrated-badge" class="badge" hidden>이 기기에는 현장 보정값이 적용되어 있습니다</p>
+    </div>
+
+    <button id="compass" class="round" type="button" aria-label="북쪽이 위로 오게 돌리기" title="북쪽 보기">
+      <svg class="needle" viewBox="0 0 40 40" aria-hidden="true">
+        <path d="M20 5 26 20H14z" fill="#e53935" />
+        <path d="M20 35 14 20h12z" fill="#90a4ae" />
+        <text x="20" y="13.5" text-anchor="middle">N</text>
+      </svg>
+    </button>
+    <button id="btn-admin" class="round small" type="button" aria-label="관리자 로그인" title="관리자 로그인">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="5" y="11" width="14" height="10" rx="2" />
+        <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+      </svg>
+    </button>
+
+    <div class="fab-stack">
+      <button id="btn-add-plant" class="pill add" type="button" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        <span>식물 추가</span>
+      </button>
+      <button id="btn-view" class="round" type="button" aria-label="위에서 보기 / 3D 보기" title="2D / 3D">
+        <span class="when-tilt">2D</span><span class="when-top">3D</span>
+      </button>
+      <button id="btn-home" class="round" type="button" aria-label="학교 전체 보기" title="전체 보기">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+        </svg>
+      </button>
+      <button id="btn-locate" class="round primary" type="button" aria-label="내 위치 보기" title="내 위치">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+          <circle cx="12" cy="12" r="7.5" class="ring" />
+        </svg>
+      </button>
+    </div>
+
+    <div id="gps-chip" class="chip" hidden><span class="dot"></span><span class="label"></span></div>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <aside id="calibration" class="panel" hidden></aside>
+
+    <div id="place-bar" class="place-bar" role="status" hidden>
+      <p class="msg"></p>
+      <div class="actions">
+        <button type="button" data-act="cancel">취소</button>
+        <button type="button" data-act="free" hidden>지도에서 직접 고르기</button>
+        <button type="button" data-act="next" class="primary">다음</button>
+      </div>
+    </div>
+
+    <section id="plant-form" class="sheet" hidden aria-labelledby="plant-form-title">
+      <form novalidate>
+        <header class="sheet-head">
+          <h2 id="plant-form-title">식물 정보</h2>
+          <button type="button" class="link" data-act="repick">위치 다시 고르기</button>
+        </header>
+        <label class="photo-pick">
+          <input type="file" name="photo" accept="image/*" />
+          <img alt="고른 사진 미리보기" />
+          <span class="photo-empty">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+              <circle cx="12" cy="13" r="3.5" />
+            </svg>
+            <strong>사진 찍기 또는 고르기</strong>
+            <small>실제 식물 사진을 올려 주세요</small>
+          </span>
+          <span class="photo-busy">사진 준비 중…</span>
+        </label>
+        <label class="field">
+          <span>이름</span>
+          <input name="name" maxlength="40" autocomplete="off" placeholder="예: 운동장 느티나무" />
+        </label>
+        <label class="field">
+          <span>설명</span>
+          <textarea name="description" maxlength="1000" rows="4" placeholder="특징, 관찰한 날, 주변 환경 등을 적어 주세요"></textarea>
+        </label>
+        <fieldset class="kinds">
+          <legend>지도에 표시할 모델</legend>
+          <div class="choices"></div>
+        </fieldset>
+        <p class="form-error" role="alert"></p>
+        <div class="actions">
+          <button type="button" data-act="cancel">취소</button>
+          <button type="submit" class="primary">저장</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="plant-card" class="sheet card" hidden aria-labelledby="plant-card-name">
+      <button type="button" class="sheet-close" data-act="close" aria-label="닫기">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+      </button>
+      <a class="photo" target="_blank" rel="noopener" title="사진 크게 보기"><img alt="" /></a>
+      <div class="sheet-body">
+        <h2 id="plant-card-name"></h2>
+        <p class="meta">
+          <span class="kind-chip"><img alt="" /><span></span></span>
+          <span class="date"></span>
+          <span class="distance"></span>
+        </p>
+        <p class="description"></p>
+        <div class="admin-actions" hidden>
+          <button type="button" class="danger" data-act="delete">이 식물 삭제</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="login-modal" class="modal" hidden>
+      <form class="modal-card">
+        <h2>관리자 로그인</h2>
+        <p class="hint">식물을 등록하거나 지우려면 관리자 비밀번호가 필요합니다.</p>
+        <input type="text" name="username" value="admin" autocomplete="username" hidden />
+        <input type="password" name="password" autocomplete="current-password" placeholder="관리자 비밀번호" />
+        <p class="form-error" role="alert"></p>
+        <div class="actions">
+          <button type="button" data-act="cancel">취소</button>
+          <button type="submit" class="primary">로그인</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="loading">
+      <div class="card">
+        <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 21c0-9 6-15 15-16-1 9-7 15-15 16zm2-3c3-1 7-4 9-9-4 2-7 5-9 9z" />
+        </svg>
+        <p class="msg">학교 3D 모델을 불러오는 중…</p>
+        <div class="bar"><span></span></div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
