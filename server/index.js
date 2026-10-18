@@ -14,6 +14,8 @@ const HOST = process.env.HOST || (SERVE_STATIC ? '0.0.0.0' : '127.0.0.1');
 const PORT = Number(process.env.PORT || (SERVE_STATIC ? 5191 : 5192));
 // Set TRUST_PROXY=1 behind Cloudflare / reverse proxies so login limits count real visitor addresses.
 const TRUST_PROXY = /^(1|true|yes)$/i.test(process.env.TRUST_PROXY || '');
+// Set LOG_REQUESTS=1 to print one access-log line per request.
+const LOG_REQUESTS = /^(1|true|yes)$/i.test(process.env.LOG_REQUESTS || '');
 
 const KINDS = new Set(['tree_large', 'tree_medium', 'grass_small']);
 const SCHOOL = { lat: 37.5039279, lon: 126.9644627 };
@@ -331,12 +333,23 @@ async function handle(req, res) {
 }
 
 const server = http.createServer((req, res) => {
+  if (LOG_REQUESTS) {
+    const t0 = Date.now();
+    res.on('finish', () => {
+      console.log('[req] ' + req.method + ' ' + req.url + ' ' + res.statusCode + ' ' + (Date.now() - t0) + 'ms host=' + req.headers.host + ' from=' + req.socket.remoteAddress);
+    });
+  }
   handle(req, res).catch((err) => {
     if (!(err instanceof HttpError)) console.error(err);
     if (res.headersSent) return res.end();
     const status = err instanceof HttpError ? err.status : 500;
     send(res, status, { error: err instanceof HttpError ? err.message : '서버 오류가 났습니다.' }, err.headers);
   });
+});
+server.on('clientError', (err, socket) => {
+  console.warn('[biomemap] 잘못된 HTTP 요청: ' + (err.code || '') + ' ' + err.message);
+  if (socket.writable) socket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n');
+  else socket.destroy();
 });
 
 await fs.mkdir(UPLOAD_DIR, { recursive: true });
