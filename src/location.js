@@ -143,6 +143,10 @@ export class LocationLayer extends EventTarget {
     // Keep the dot and heading cone the same size on screen at every zoom level.
     const dist = this.viewer.camera.position.distanceTo(g.position);
     g.userData.heading.scale.setScalar(dist * 0.075);
+    // The person figure and the badge above its head also keep a steady size on screen.
+    const figureScale = dist * 0.017;
+    g.userData.figure.scale.setScalar(figureScale);
+    g.userData.dot.position.y = FIGURE_HEIGHT * figureScale + 0.4;
 
     const pulse = (time % 2000) / 2000;
     g.userData.pulse.scale.setScalar(0.05 + pulse * 0.07);
@@ -177,21 +181,62 @@ function dotTexture() {
   c.width = c.height = size;
   const g = c.getContext('2d');
   const r = size / 2;
-  g.fillStyle = 'rgba(0,0,0,0.25)';
+  // Soft drop shadow
+  g.fillStyle = 'rgba(0,0,0,0.24)';
   g.beginPath();
-  g.arc(r, r + 3, r * 0.62, 0, Math.PI * 2);
+  g.arc(r, r + 4, r * 0.72, 0, Math.PI * 2);
   g.fill();
+  // White border circle
   g.fillStyle = '#ffffff';
   g.beginPath();
-  g.arc(r, r, r * 0.62, 0, Math.PI * 2);
+  g.arc(r, r, r * 0.72, 0, Math.PI * 2);
   g.fill();
+  // Blue inner badge
   g.fillStyle = '#1a73e8';
   g.beginPath();
-  g.arc(r, r, r * 0.45, 0, Math.PI * 2);
+  g.arc(r, r, r * 0.6, 0, Math.PI * 2);
+  g.fill();
+  // Simple person silhouette (head + rounded shoulders/body)
+  g.fillStyle = '#ffffff';
+  g.beginPath();
+  g.arc(r, r - 13, 13, 0, Math.PI * 2);
+  g.fill();
+  g.beginPath();
+  g.moveTo(r - 23, r + 24);
+  g.quadraticCurveTo(r - 23, r + 4, r, r + 4);
+  g.quadraticCurveTo(r + 23, r + 4, r + 23, r + 24);
+  g.quadraticCurveTo(r, r + 28, r - 23, r + 24);
+  g.closePath();
   g.fill();
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
+}
+
+// Height of the person figure at scale 1 (model units). animate() scales it with camera distance.
+const FIGURE_HEIGHT = 2.5;
+
+/** A simple standing person (head + shoulders + body) in blue with a white rim, like a map person icon. */
+function buildPersonFigure() {
+  const fig = new THREE.Group();
+  fig.name = 'gps-person';
+  const bodyMat = new THREE.MeshStandardMaterial({ color: BLUE, roughness: 0.4, emissive: 0x0b3c7c, emissiveIntensity: 0.45 });
+  const rimMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide });
+
+  const part = (geometry, y, rim = 1.12) => {
+    const mesh = new THREE.Mesh(geometry, bodyMat);
+    mesh.position.y = y;
+    mesh.castShadow = true;
+    // Back faces of a slightly larger copy show as a white outline around the part.
+    const outline = new THREE.Mesh(geometry, rimMat);
+    outline.scale.setScalar(rim);
+    mesh.add(outline);
+    fig.add(mesh);
+  };
+  part(new THREE.CylinderGeometry(0.3, 0.52, 1.1, 28), 0.55); // body
+  part(new THREE.SphereGeometry(0.5, 28, 16).scale(1, 0.62, 0.78), 1.12); // shoulders
+  part(new THREE.SphereGeometry(0.4, 28, 20), 1.92); // head
+  return fig;
 }
 
 function ringTexture() {
@@ -237,14 +282,17 @@ function buildMarker() {
   const pulse = new THREE.Sprite(
     new THREE.SpriteMaterial({ map: ringTexture(), sizeAttenuation: false, depthTest: false, depthWrite: false, transparent: true }),
   );
-  pulse.position.y = 1;
+  pulse.position.y = 0.6;
   pulse.renderOrder = 12;
   const dot = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTexture(), sizeAttenuation: false, depthTest: false, depthWrite: false }));
-  dot.scale.setScalar(0.055);
-  dot.position.y = 1;
+  dot.scale.setScalar(0.05);
+  dot.center.set(0.5, 0); // the badge sits above the figure's head
   dot.renderOrder = 13;
 
-  group.add(accuracy, heading, pulse, dot);
-  group.userData = { accuracy, heading, pulse, dot };
+  const figure = buildPersonFigure();
+
+  group.add(accuracy, heading, pulse, figure, dot);
+  group.userData = { accuracy, heading, pulse, figure, dot };
   return group;
 }
+
